@@ -1,18 +1,21 @@
-import { GoogleGenAI } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { NextResponse } from "next/server";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// التهيئة باستخدام الاسم الصحيح للكلاس الرسمي من قوقل
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
 export async function POST(req: Request) {
   try {
     const { prompt } = await req.json();
-    const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
+    
+    // استخدام النموذج الأساسي المستقر
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     // --- 1. توليد المواصفات الفنية ---
     const specsPrompt = `
       أنت مهندس معمارية برمجيات. حلل طلب المستخدم واستخرج منه المواصفات الفنية المطلوبة لبناء حاوية ذكية على شبكة ICP.
       طلب المستخدم: "\${prompt}"
-      أخرج النتيجة على شكل نقاط واضحة باللغة العربية (الهدف، أنواع البيانات، الدوال المطلوبة).
+      أخرج النتيجة على شكل نقاط واضحة باللغة العربية تشمل (الهدف، أنواع البيانات، الدوال المطلوبة).
     `;
     const specsResult = await model.generateContent(specsPrompt);
     const generatedSpecs = specsResult.response.text();
@@ -21,10 +24,10 @@ export async function POST(req: Request) {
     const codeSystemInstruction = `
       أنت مبرمج محترف متخصص في لغة Motoko وشبكة ICP.
       مهمتك هي تحويل المواصفات المرفقة إلى كود Motoko نظيف ومكتمل تماماً داخل (actor).
-      شروط صارمة: أخرج كود Motoko الخام فقط بدون أي علامات مثل \`\`\`motoko أو شرح نصي.
+      شروط صارمة: أخرج كود Motoko الخام فقط بدون أي علامات مثل \`\`\`motoko أو شرح نصي إطلاقاً.
     `;
 
-    const codeModel = ai.getGenerativeModel({ 
+    const codeModel = genAI.getGenerativeModel({ 
       model: "gemini-1.5-flash",
       systemInstruction: codeSystemInstruction 
     });
@@ -33,19 +36,16 @@ export async function POST(req: Request) {
     let codeResult = await codeModel.generateContent(codePrompt);
     let generatedCode = codeResult.response.text();
 
-    // --- 3. نظام التدقيق الذاتي والفحص (Zero-Data-Loss Framework) ---
+    // --- 3. نظام التدقيق الذاتي والفحص ---
     let isCodeValid = false;
     let attempts = 0;
-    const maxAttempts = 2; // عدد محاولات التصحيح الذاتي القصوى لضمان الكفاءة المجانية
+    const maxAttempts = 2;
 
     while (!isCodeValid && attempts < maxAttempts) {
       attempts++;
-      
-      // قاعدة الفحص الفني: يجب أن يحتوي الكود على كلمة actor البرمجية وألا يحتوي على نصوص شارحة مخربة
       if (generatedCode.includes("actor") && !generatedCode.includes("```")) {
         isCodeValid = true;
       } else {
-        // حلقة التصحيح الذاتي (Self-Healing Loop)
         const healingPrompt = `
           الكود الذي قمت بكتابته يحتوي على أخطاء تنسيق أو يفتقد لهيكل الـ actor الأساسي في لغة Motoko. 
           الكود الحالي المعطوب هو:

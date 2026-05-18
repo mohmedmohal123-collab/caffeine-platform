@@ -6,31 +6,22 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 export async function POST(req: Request) {
   try {
     const { prompt } = await req.json();
-
-    // تهيئة النموذج
     const model = ai.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    // --- المرحلة 1: توليد المواصفات الفنية (Specifications) ---
+    // --- 1. توليد المواصفات الفنية ---
     const specsPrompt = `
-      أنت مهندس معمارية برمجيات (Software Architect). 
-      حلل طلب المستخدم التالي واستخرج منه المواصفات الفنية المطلوبة لبناء حاوية ذكية (Canister) على شبكة ICP.
-      طلب المستخدم: "${prompt}"
-      أخرج النتيجة على شكل نقاط واضحة باللغة العربية تشمل:
-      1. الهدف العام من التطبيق.
-      2. نوع البيانات التي سيتم تخزينها (Data Types).
-      3. الدوال الأساسية المطلوبة (Functions) ونوعها (Query أو Update).
+      أنت مهندس معمارية برمجيات. حلل طلب المستخدم واستخرج منه المواصفات الفنية المطلوبة لبناء حاوية ذكية على شبكة ICP.
+      طلب المستخدم: "\${prompt}"
+      أخرج النتيجة على شكل نقاط واضحة باللغة العربية (الهدف، أنواع البيانات، الدوال المطلوبة).
     `;
-    
     const specsResult = await model.generateContent(specsPrompt);
     const generatedSpecs = specsResult.response.text();
 
-    // --- المرحلة 2: توليد كود Motoko بناءً على المواصفات المخرجة ---
+    // --- 2. توليد الكود المبدئي ---
     const codeSystemInstruction = `
       أنت مبرمج محترف متخصص في لغة Motoko وشبكة ICP.
-      مهمتك هي أخذ المواصفات الفنية المرفقة وتحويلها إلى كود Motoko نظيف ومكتمل داخل (actor).
-      شروط صارمة:
-      1. أخرج كود Motoko الخام فقط.
-      2. ممنوع وضع علامات الأكواد مثل \`\`\`motoko أو أي شرح نصي إطلاقاً.
+      مهمتك هي تحويل المواصفات المرفقة إلى كود Motoko نظيف ومكتمل تماماً داخل (actor).
+      شروط صارمة: أخرج كود Motoko الخام فقط بدون أي علامات مثل \`\`\`motoko أو شرح نصي.
     `;
 
     const codeModel = ai.getGenerativeModel({ 
@@ -39,10 +30,33 @@ export async function POST(req: Request) {
     });
 
     const codePrompt = `قم بكتابة كود لغة Motoko الكامل والمتوافق مع هذه المواصفات الفنية بالضبط:\n${generatedSpecs}`;
-    const codeResult = await codeModel.generateContent(codePrompt);
-    const generatedCode = codeResult.response.text();
+    let codeResult = await codeModel.generateContent(codePrompt);
+    let generatedCode = codeResult.response.text();
 
-    // إرجاع النتيجتين معاً للواجهة الأمامية
+    // --- 3. نظام التدقيق الذاتي والفحص (Zero-Data-Loss Framework) ---
+    let isCodeValid = false;
+    let attempts = 0;
+    const maxAttempts = 2; // عدد محاولات التصحيح الذاتي القصوى لضمان الكفاءة المجانية
+
+    while (!isCodeValid && attempts < maxAttempts) {
+      attempts++;
+      
+      // قاعدة الفحص الفني: يجب أن يحتوي الكود على كلمة actor البرمجية وألا يحتوي على نصوص شارحة مخربة
+      if (generatedCode.includes("actor") && !generatedCode.includes("```")) {
+        isCodeValid = true;
+      } else {
+        // حلقة التصحيح الذاتي (Self-Healing Loop)
+        const healingPrompt = `
+          الكود الذي قمت بكتابته يحتوي على أخطاء تنسيق أو يفتقد لهيكل الـ actor الأساسي في لغة Motoko. 
+          الكود الحالي المعطوب هو:
+          ${generatedCode}
+          الرجاء إعادة صياغة الكود فوراً وإصلاحه، وتأكد من إخراج الكود البرمجي الخام فقط بدون أي نصوص تفسيرية.
+        `;
+        codeResult = await codeModel.generateContent(healingPrompt);
+        generatedCode = codeResult.response.text();
+      }
+    }
+
     return NextResponse.json({ 
       specs: generatedSpecs, 
       code: generatedCode 

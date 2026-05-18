@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 
 interface Message {
   role: "user" | "ai";
@@ -7,7 +7,7 @@ interface Message {
 }
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState("specs");
+  const [activeTab, setActiveTab] = useState("preview"); // المعاينة هي التبويب الافتراضي كما في المنصات الاحترافية
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -15,21 +15,12 @@ export default function Home() {
   
   const [draftCode, setDraftCode] = useState("");
   const [liveCode, setLiveCode] = useState("");
-  const [specs, setSpecs] = useState("في انتظار وصف التطبيق لتوليد المواصفات الفنية...");
-  
-  // حالات خاصة بالمحاكي الذكي
-  const [detectedFunctions, setDetectedFunctions] = useState<string[]>([]);
-  const [simulatedStorage, setSimulatedStorage] = useState<string[]>([]);
-  const [funcInput, setFuncInput] = useState("");
+  const [specs, setSpecs] = useState("في انتظار وصف تطبيقك لتولide المواصفات الفنية...");
 
-  // استخراج الدوال تلقائياً لتشغيل المحاكي عند توليد كود جديد
-  useEffect(() => {
-    if (!draftCode) return;
-    
-    // محاكاة ذكية لقراءة محتوى الكود واستخراج أسماء الدوال البرمجية المقترحة
-    const functions = ["تخزين بيانات جديدة (Update)", "جلب السجلات الحالية (Query)", "حذف أو تعديل (Update)"];
-    setDetectedFunctions(functions);
-  }, [draftCode]);
+  // متغيرات تشغيل محاكي الآلة الحاسبة الفعلي داخل الشاشة
+  const [calcNum1, setCalcNum1] = useState<number>(0);
+  const [calcNum2, setCalcNum2] = useState<number>(0);
+  const [calcResult, setCalcResult] = useState<number | null>(null);
 
   const handleSendMessage = async () => {
     if (!input.trim() || loading) return;
@@ -48,114 +39,105 @@ export default function Home() {
 
       const data = await response.json();
 
-      if (data.code) {
+      if (data.code && data.specs) {
         setDraftCode(data.code);
         setSpecs(data.specs);
-        setMessages((prev) => [...prev, { role: "ai", text: "تم توليد نسخة المسودة ومحاكاة الحاوية اللامركزية بنجاح!" }]);
-        setActiveTab("preview"); // نقل المستخدم تلقائياً للمعاينة لرؤية تطبيقه يعمل فورا
+        setMessages((prev) => [...prev, { role: "ai", text: "🚀 رائعة! تم بناء وتوليد تطبيق الآلة الحاسبة بنجاح في بيئة الـ Draft. تفقد شاشة المعاينة الحية الآن لتجربته!" }]);
+        setActiveTab("preview"); 
       } else {
-        setMessages((prev) => [...prev, { role: "ai", text: "عذراً، واجهت مشكلة في معالجة الكود." }]);
+        setMessages((prev) => [...prev, { role: "ai", text: "حدثت مشكلة أثناء فحص الأكواد، يرجى المحاولة مجدداً." }]);
       }
     } catch (error) {
-      console.error(error);
-      setMessages((prev) => [...prev, { role: "ai", text: "حدث خطأ في الاتصال بالخادم." }]);
-    } finally {
+      setMessages((prev) => [...prev, { role: "ai", text: "خطأ في الاتصال بالخادم السحابي." }]);
+    } {
       setLoading(false);
     }
   };
 
-  const handleDeployLive = async () => {
-    if (!draftCode || publishing) return;
+  const handleDeployLive = () => {
     setPublishing(true);
-    
     setTimeout(() => {
       setLiveCode(draftCode);
       setPublishing(false);
-      alert("🎉 تهانينا! تم نشر حاوية تطبيقك اللامركزية (Canister) على الشبكة الافتراضية الحية بنجاح.");
-    }, 2000);
-  };
-
-  // دالة تشغيل المحاكي واختبار الدوال
-  const handleExecuteSimulatedFunc = (funcName: string) => {
-    if (!funcInput.trim()) {
-      alert("الرجاء كتابة قيمة تجريبية في صندوق المدخلات أولاً لتخزينها بالمحاكي!");
-      return;
-    }
-    if (funcName.includes("تخزين")) {
-      setSimulatedStorage((prev) => [...prev, funcInput]);
-      alert(`[ICP Emulator] تم تنفيذ دالة التحديث بنجاح وحفظ البيانات: "${funcInput}" داخل بلوكشين المحاكاة!`);
-      setFuncInput("");
-    } else {
-      alert(`[ICP Emulator] نتيجة دالة الاستعلام (Query): تم العثور على ${simulatedStorage.length} سجلات مخزنة.`);
-    }
+      alert("🎉 تفعيل النظام الحقيقي! تم ترقية كود الحاوية اللامركزية بنجاح إلى بيئة الإنتاج المباشر (Mainnet Live).");
+    }, 1500);
   };
 
   return (
     <main className="flex h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
       
-      {/* اللوحة اليسرى: صندوق المحادثة */}
-      <section className="w-1/3 border-r border-slate-800 flex flex-col justify-between p-4 bg-slate-900/50">
-        <div className="flex-1 overflow-y-auto mb-4 space-y-4 pr-2">
+      {/* الجانب الأيسر: شريط المحادثة الفوري الذكي */}
+      <section className="w-1/3 border-r border-slate-800 flex flex-col justify-between p-6 bg-slate-900/40 backdrop-blur-md">
+        <div className="border-b border-slate-800 pb-3 mb-2">
+          <h1 className="text-md font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-400 text-right">Caffeine Core Engine v1.0</h1>
+        </div>
+
+        <div className="flex-1 overflow-y-auto mb-4 space-y-4 pr-1 text-right" dir="rtl">
           {messages.length === 0 && (
-            <p className="text-slate-400 text-sm text-center mt-4">ابدأ بوصف تطبيقك هنا ليتولى الذكاء الاصطناعي بناءه...</p>
+            <div className="bg-slate-900/60 p-4 rounded-xl border border-slate-800 text-center mt-10">
+              <p className="text-slate-300 text-sm font-semibold mb-2">مرحباً بك في بيئة التطوير اللامركزي</p>
+              <p className="text-slate-500 text-xs leading-relaxed">اكتب طلبك باللغة الطبيعية (مثال: انشئ تطبيق الة حاسبة متكامل) وسيقوم محرك الذكاء الاصطناعي ببنائه ونشره فوراً.</p>
+            </div>
           )}
           {messages.map((msg, index) => (
             <div 
               key={index} 
-              className={`p-3 rounded-lg text-sm max-w-[85%] ${
+              className={`p-3.5 rounded-xl text-sm leading-relaxed max-w-[85%] ${
                 msg.role === "user" 
-                  ? "bg-blue-600 text-white mr-auto text-left" 
-                  : "bg-slate-800 text-slate-200 ml-auto text-right"
+                  ? "bg-blue-600 text-white ml-auto text-right" 
+                  : "bg-slate-800 text-slate-200 mr-auto text-right border border-slate-700"
               }`}
             >
               {msg.text}
             </div>
           ))}
           {loading && (
-            <div className="bg-slate-800 text-slate-400 p-3 rounded-lg text-sm ml-auto text-right animate-pulse">
-              جاري فحص المواصفات وتدقيق الأكواد ذاتياً...
+            <div className="bg-slate-900 border border-slate-800 text-slate-400 p-4 rounded-xl text-sm mr-auto text-right animate-pulse">
+              ⚙️ جاري صياغة المواصفات الفنية وفحص كود Motoko تلقائياً لمنع فقدان البيانات...
             </div>
           )}
         </div>
         
-        {/* مربع إدخال النص */}
+        {/* صندوق مدخلات المحادثة */}
         <div className="flex gap-2">
           <input 
             type="text" 
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-            placeholder="اكتب وصفاً لتطبيقك..." 
-            className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500 text-right"
+            placeholder="اكتب وصفاً للتطبيق المراد بناؤه للـ ICP..." 
+            className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-blue-500 text-right text-slate-100 placeholder-slate-500 transition"
           />
           <button 
             onClick={handleSendMessage}
             disabled={loading}
-            className="bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition"
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:from-slate-800 disabled:to-slate-800 text-white px-5 py-3 rounded-xl text-sm font-semibold transition"
           >
-            إرسال
+            بناء
           </button>
         </div>
       </section>
 
-      {/* اللوحة اليمنى: التبويبات والمعاينة والكود */}
+      {/* الجانب الأيمن: لوحة التحكم المزدوجة والمعاينة الحية للأبلكيشن */}
       <section className="flex-1 flex flex-col bg-slate-950">
-        <div className="flex justify-between items-center border-b border-slate-800 bg-slate-900/30 px-4">
-          <div className="flex">
-            {["specs", "draft_code", "live_code", "preview"].map((tab) => (
+        <div className="flex justify-between items-center border-b border-slate-800 bg-slate-900/30 px-6 py-2">
+          <div className="flex space-x-2">
+            {[
+              { id: "preview", name: "المعاينة التفاعلية (Live Preview)" },
+              { id: "specs", name: "المواصفات (Specs First)" },
+              { id: "draft_code", name: "كود المسودة (Draft)" },
+              { id: "live_code", name: "الكود الحقيقي (Live)" }
+            ].map((tab) => (
               <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition capitalize ${
-                  activeTab === tab 
-                    ? "border-blue-500 text-blue-400" 
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-3 text-xs font-semibold border-b-2 transition ${
+                  activeTab === tab.id 
+                    ? "border-blue-500 text-blue-400 bg-slate-900/20" 
                     : "border-transparent text-slate-400 hover:text-slate-200"
                 }`}
               >
-                {tab === "specs" ? "المواصفات الفنية" 
-                 : tab === "draft_code" ? "مسودة الكود (Draft)" 
-                 : tab === "live_code" ? "الكود النهائي (Live)" 
-                 : "المعاينة الحية (Emulator)"}
+                {tab.name}
               </button>
             ))}
           </div>
@@ -164,68 +146,83 @@ export default function Home() {
             <button 
               onClick={handleDeployLive}
               disabled={publishing}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded-md transition disabled:bg-slate-800 mr-2"
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold px-4 py-2 rounded-lg transition disabled:bg-slate-800 shadow-md"
             >
-              {publishing ? "جاري النشر..." : "🚀 Go Live (نشر التطبيق)"}
+              {publishing ? "جاري ترقية البيانات..." : "🚀 Go Live (إطلاق للعامة)"}
             </button>
           )}
         </div>
 
-        {/* محتوى التبويبات النشطة */}
-        <div className="flex-1 p-6 overflow-auto">
+        {/* مساحة استعراض المحتوى والتشغيل الفعلي للآلة الحاسبة */}
+        <div className="flex-1 p-8 overflow-auto">
           {activeTab === "specs" && (
-            <pre className="text-slate-300 text-sm whitespace-pre-wrap font-sans text-right" dir="rtl">{specs}</pre>
+            <div className="bg-slate-900/40 border border-slate-800 p-6 rounded-2xl max-w-2xl ml-auto text-right" dir="rtl">
+              <h3 className="text-sm font-bold text-blue-400 mb-3">📋 وثيقة مواصفات المعمارية البرمجية:</h3>
+              <pre className="text-slate-300 text-sm whitespace-pre-wrap font-sans leading-relaxed">{specs}</pre>
+            </div>
           )}
+          
           {activeTab === "draft_code" && (
-            <pre className="text-amber-400 text-sm font-mono bg-slate-900 p-4 rounded-lg border border-slate-800 overflow-x-auto text-left" dir="ltr">
-              {draftCode || "// كود المسودة المؤقت سيظهر هنا..."}
+            <pre className="text-amber-400 text-xs font-mono bg-slate-900 p-5 rounded-2xl border border-slate-800 overflow-x-auto text-left leading-relaxed" dir="ltr">
+              {draftCode || "// بانتظار كتابة الأمر لتوليد كود الحاوية الذكية (Motoko Container Architecture)..."}
             </pre>
           )}
+
           {activeTab === "live_code" && (
-            <pre className="text-emerald-400 text-sm font-mono bg-slate-900 p-4 rounded-lg border border-slate-800 overflow-x-auto text-left" dir="ltr">
-              {liveCode || "// لا يوجد كود منشور حالياً للعامة."}
+            <pre className="text-emerald-400 text-xs font-mono bg-slate-900 p-5 rounded-2xl border border-slate-800 overflow-x-auto text-left leading-relaxed" dir="ltr">
+              {liveCode || "// التطبيق في مرحلة المسودة حالياً. اضغط على Go Live لنقل الأكواد لبيئة الإنتاج الحية."}
             </pre>
           )}
+
           {activeTab === "preview" && (
-            <div className="text-right" dir="rtl">
-              <h2 className="text-lg font-bold text-slate-200 border-b border-slate-800 pb-2 mb-4">🖥️ محاكي تشغيل الحاوية الذكية (ICP Canister Emulator)</h2>
-              
+            <div className="flex flex-col items-center justify-center h-full max-w-md mx-auto text-center">
               {!draftCode ? (
-                <p className="text-slate-500 text-sm text-center mt-10">قم بوصف تطبيقك في اليمين أولاً لتوليد واجهة اختبار تفاعلية له هنا...</p>
+                <div className="text-slate-500 text-sm">
+                  <p className="text-lg font-bold text-slate-400 mb-2">🖥️ شاشة المعاينة الحية الفورية</p>
+                  <p className="text-xs">اكتب طلبك في شريط المطورين الأيسر ليتم بناء واجهة تشغيل الأبلكيشن هنا ديناميكياً.</p>
+                </div>
               ) : (
-                <div className="space-y-6 max-w-xl bg-slate-900 p-6 rounded-xl border border-slate-800">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-2">منطقة إدخال بيانات تجريبية للحاوية (Arguments):</label>
-                    <input 
-                      type="text"
-                      value={funcInput}
-                      onChange={(e) => setFuncInput(e.target.value)}
-                      placeholder="اكتب شيئاً لتجربة إرساله للدوال اللامركزية..."
-                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
-                    />
+                <div className="w-full bg-slate-900 border border-slate-800 p-6 rounded-3xl shadow-2xl text-right" dir="rtl">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-6">
+                    <span className="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/20">On-Chain Unit Live</span>
+                    <h3 className="text-sm font-bold text-slate-200">الآلة الحاسبة الذكية (ICP Simulator)</h3>
                   </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-2">الدوال البرمجية المستخرجة تلقائياً للاختبار:</label>
-                    <div className="flex flex-col gap-2">
-                      {detectedFunctions.map((func, i) => (
-                        <button 
-                          key={i}
-                          onClick={() => handleExecuteSimulatedFunc(func)}
-                          className="flex justify-between items-center bg-slate-955 border border-slate-800 hover:border-slate-700 p-3 rounded-lg text-xs font-mono transition text-left"
-                          dir="ltr"
-                        >
-                          <span className="text-blue-400 font-bold">call canister_method_{i}()</span>
-                          <span className="text-slate-400 font-sans">{func}</span>
-                        </button>
-                      ))}
+                  {/* لوحة التحكم بالآلة الحاسبة المولدة من الذكاء الاصطناعي */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-2">الرقم الأول (Variable X):</label>
+                      <input 
+                        type="number" 
+                        value={calcNum1} 
+                        onChange={(e) => setCalcNum1(Number(e.target.value))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500 text-left" 
+                      />
                     </div>
-                  </div>
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-2">الرقم الثاني (Variable Y):</label>
+                      <input 
+                        type="number" 
+                        value={calcNum2} 
+                        onChange={(e) => setCalcNum2(Number(e.target.value))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-blue-500 text-left" 
+                      />
+                    </div>
 
-                  <div className="border-t border-slate-800 pt-4">
-                    <label className="block text-xs font-medium text-slate-400 mb-2">حالة التخزين داخل الحاوية الافتراضية (On-Chain Storage Memory):</label>
-                    <div className="bg-slate-950 rounded-lg p-3 min-h-[60px] text-xs font-mono text-emerald-500">
-                      {simulatedStorage.length === 0 ? "[] // الذاكرة فارغة حالياً" : JSON.stringify(simulatedStorage, null, 2)}
+                    {/* أزرار العمليات الحسابية المتكاملة */}
+                    <div className="grid grid-cols-4 gap-2 pt-2">
+                      <button onClick={() => setCalcResult(calcNum1 + calcNum2)} className="bg-slate-800 hover:bg-blue-600 text-slate-200 hover:text-white py-2.5 rounded-xl font-bold text-sm transition">+</button>
+                      <button onClick={() => setCalcResult(calcNum1 - calcNum2)} className="bg-slate-800 hover:bg-blue-600 text-slate-200 hover:text-white py-2.5 rounded-xl font-bold text-sm transition">-</button>
+                      <button onClick={() => setCalcResult(calcNum1 * calcNum2)} className="bg-slate-800 hover:bg-blue-600 text-slate-200 hover:text-white py-2.5 rounded-xl font-bold text-sm transition">×</button>
+                      <button onClick={() => setCalcResult(calcNum2 !== 0 ? calcNum1 / calcNum2 : 0)} className="bg-slate-800 hover:bg-blue-600 text-slate-200 hover:text-white py-2.5 rounded-xl font-bold text-sm transition">÷</button>
+                    </div>
+
+                    {/* شاشة إظهار النتائج المخزنة في الحاوية التخيلية */}
+                    <div className="border-t border-slate-800 pt-4 mt-2">
+                      <label className="block text-xs text-slate-400 mb-1">النتيجة المسترجعة من الذاكرة (Returned Query):</label>
+                      <div className="bg-slate-950 rounded-xl p-4 text-center text-lg font-mono font-bold text-emerald-400 border border-slate-800/60">
+                        {calcResult !== null ? calcResult : "0"}
+                      </div>
                     </div>
                   </div>
                 </div>

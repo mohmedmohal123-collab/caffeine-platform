@@ -14,8 +14,9 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
   
-  const [draftCode, setDraftCode] = useState("");
-  const [liveCode, setLiveCode] = useState("");
+  // حفظ الأكواد المنفصلة القادمة من الوكلاء المتخصصين
+  const [backendCode, setBackendCode] = useState("");
+  const [frontendCode, setFrontendCode] = useState("");
   const [specs, setSpecs] = useState("في انتظار استقبال الأوامر لبدء تفعيل هندسة المعمارية...");
 
   const [calcNum1, setCalcNum1] = useState<number>(0);
@@ -40,18 +41,29 @@ export default function Home() {
       const data = await response.json();
 
       if (data.success && data.codes) {
-        setDraftCode(data.codes.backend);
+        setBackendCode(data.codes.backend);
+        setFrontendCode(data.codes.frontend);
         setSpecs(data.specs);
-        setMessages((prev) => [...prev, { role: "ai", text: "⚡ تم إنتاج النظام وفصل الأكواد بنجاح عبر الوكلاء الموزعين!" }]);
+        setMessages((prev) => [...prev, { role: "ai", text: "⚡ تم معالجة طلبك عبر الوكلاء الموزعين وفصل الأكواد بنجاح! تفقد التبويبات بالأعلى لعرض الكود المولد." }]);
         setActiveTab("preview");
       } else {
-        setMessages((prev) => [...prev, { role: "ai", text: "❌ واجه المحرك صعوبة في فك حزم البيانات الفنية." }]);
+        setMessages((prev) => [...prev, { role: "ai", text: "❌ فشل المحرك في تنظيم حزم البيانات، الرجاء إعادة المحاولة." }]);
       }
     } catch (error) {
-      setMessages((prev) => [...prev, { role: "ai", text: "❌ خطأ في الاستجابة السحابية الحية." }]);
+      setMessages((prev) => [...prev, { role: "ai", text: "❌ خطأ في الاستجابة السحابية." }]);
     } finally {
       setLoading(false);
     }
+  };
+
+  // دالة تحميل الكود المختار
+  const handleDownloadFile = (filename: string, content: string) => {
+    const element = document.createElement("a");
+    const file = new Blob([content], { type: "text/plain" });
+    element.href = URL.createObjectURL(file);
+    element.download = filename;
+    document.body.appendChild(element);
+    element.click();
   };
 
   return (
@@ -65,7 +77,7 @@ export default function Home() {
           <div className="flex flex-col space-y-4 w-full px-2">
             {[
               { id: "builder", icon: "💎", label: "المطور" },
-              { id: "versions", icon: "🔱", label: "الإصدارات" },
+              { id: "versions", icon: "CN", label: "النسخ" },
               { id: "settings", icon: "🔮", label: "الإعدادات" }
             ].map((item) => (
               <button
@@ -77,8 +89,7 @@ export default function Home() {
                     : "text-slate-500 hover:text-slate-300 hover:bg-slate-900/30"
                 }`}
               >
-                <span className="text-base group-hover:scale-110 transition-transform">{item.icon}</span>
-                <span className="text-[9px] tracking-tight">{item.label}</span>
+                <span className="text-[10px] tracking-tight">{item.label}</span>
                 {currentSection === item.id && <div className="absolute right-0 top-3 h-6 w-1 bg-cyan-500 rounded-l-md shadow-[0_0_10px_#06b6d4]" />}
               </button>
             ))}
@@ -96,12 +107,11 @@ export default function Home() {
               <p className="text-[10px] text-slate-500 font-medium mt-1">توليد وفصل الأكواد ومعاينة البنية التحتية</p>
             </div>
 
-            {/* نافذة الدردشة المستوحاة بالكامل من ستايل الـ Premium AI */}
             <div className="flex-1 overflow-y-auto mb-4 space-y-4 pr-1 text-right" dir="rtl">
               {messages.length === 0 && (
                 <div className="bg-gradient-to-b from-slate-900/60 to-slate-950 border border-slate-800/80 p-5 rounded-2xl text-center mt-6 shadow-[0_10px_30px_rgba(0,0,0,0.2)]">
-                  <p className="text-slate-300 text-xs font-bold mb-1.5">⚡ محرك التوليد الفوري جاهز</p>
-                  <p className="text-slate-500 text-[11px] leading-relaxed">قم بوصف تطبيق الويب اللامركزي الذي تريده، وسيقوم الوكلاء ببنائه فوراً.</p>
+                  <p className="text-slate-300 text-xs font-bold mb-1.5">⚡ محرك التوليد التكراري جاهز</p>
+                  <p className="text-slate-500 text-[11px] leading-relaxed">قم بوصف تطبيق الويب اللامركزي الذي تريده، وسيقوم الوكلاء ببنائه وفصله تلقائياً.</p>
                 </div>
               )}
               {messages.map((msg, index) => (
@@ -118,13 +128,12 @@ export default function Home() {
               ))}
               {loading && (
                 <div className="bg-slate-900/50 border border-slate-800/80 text-cyan-500 p-4 rounded-2xl text-xs mr-auto text-right animate-pulse flex items-center gap-2 justify-end shadow-inner">
-                  <span>جاري تدقيق وفصل الأكواد هندسياً عبر الوكلاء...</span>
+                  <span>جاري معالجة وفصل الأكواد هندسياً...</span>
                   <span className="h-2 w-2 rounded-full bg-cyan-500 animate-ping" />
                 </div>
               )}
             </div>
 
-            {/* حقل إدخال الأوامر الجذاب */}
             <div className="flex gap-2 relative bg-slate-900 border border-slate-800 p-1 rounded-2xl shadow-inner focus-within:border-cyan-500/50 transition-colors">
               <input 
                 type="text" 
@@ -145,21 +154,17 @@ export default function Home() {
           </div>
         )}
 
-        {/* بقية تبويبات التحكم الجانبية */}
         {currentSection === "versions" && (
           <div className="h-full text-right" dir="rtl">
             <h2 className="text-sm font-bold text-slate-200 border-b border-slate-900 pb-3 mb-4">📜 سجل النسخ والإصدارات</h2>
-            <div className="bg-slate-900/40 border border-slate-800 p-4 rounded-xl text-xs text-slate-400">
-              <p className="text-cyan-400 font-bold mb-1">النسخة الافتراضية #1</p>
-              <p className="text-[11px] text-slate-500">نظام البناء متزامن وتلقائي مع قاعدة البيانات.</p>
-            </div>
+            <p className="text-xs text-slate-500">سيتم حفظ الإصدارات التكرارية ديناميكياً هنا بمجرد التوليد الناجح للأكواد.</p>
           </div>
         )}
 
         {currentSection === "settings" && (
           <div className="h-full text-right" dir="rtl">
             <h2 className="text-sm font-bold text-slate-200 border-b border-slate-900 pb-3 mb-4">🔮 بيئة الحوسبة</h2>
-            <p className="text-xs text-slate-500 leading-relaxed">المنصة تعمل حالياً بنظام المحاكاة الذكية للبيئات اللامركزية عبر الخوادم المحلية الفورية لضمان مجانية وسرعة التشغيل التجريبي للتطبيقات.</p>
+            <p className="text-xs text-slate-500 leading-relaxed">المنصة تعمل حالياً بنظام المحاكاة للبيئات اللامركزية عبر الخوادم لضمان مجانية وسرعة التشغيل التجريبي للتطبيقات.</p>
           </div>
         )}
       </section>
@@ -167,13 +172,14 @@ export default function Home() {
       {/* 3️⃣ لوحة استعراض المحتوى والمطور (The Main Workspace Screen) */}
       <section className="flex-1 flex flex-col bg-slate-950 relative">
         
-        {/* شريط الإجراءات العلوي الفاخر جداً */}
+        {/* شريط الإجراءات العلوي الفاخر جداً ومقسم التبويبات الفنية الأربعة */}
         <div className="flex justify-between items-center border-b border-slate-900/80 bg-slate-950 px-8 py-3 shadow-[0_4px_20px_rgba(0,0,0,0.4)]">
           <div className="flex bg-slate-900/60 border border-slate-800/80 p-0.5 rounded-xl">
             {[
               { id: "preview", name: "🖥️ المعاينة الحية" },
-              { id: "specs", name: "📋 معمارية الوكلاء" },
-              { id: "code", name: "💻 كود الحاوية (Motoko)" }
+              { id: "specs", name: "📋 معمارية النظام" },
+              { id: "motoko", name: "💻 كود الـ Backend (Motoko)" },
+              { id: "react", name: "🎨 كود الـ Frontend (React)" }
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -189,14 +195,20 @@ export default function Home() {
             ))}
           </div>
 
-          {/* أزرار الإجراءات والتحميل المباشرة */}
-          {draftCode && (
+          {/* أزرار الإجراءات والتحميل المباشرة التكرارية */}
+          {backendCode && (
             <div className="flex items-center space-x-2">
-              <button className="bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 text-xs font-bold px-3 py-2 rounded-xl transition shadow-md">
-                📥 تحميل المشروع كملف مستقل
+              <button 
+                onClick={() => handleDownloadFile("Main.mo", backendCode)}
+                className="bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 text-xs font-bold px-3 py-2 rounded-xl transition shadow-md"
+              >
+                📥 تحميل كود الخلفية (.mo)
               </button>
-              <button className="bg-gradient-to-r from-emerald-600 to-cyan-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-lg shadow-emerald-950">
-                🚀 نشر فوري (Live)
+              <button 
+                onClick={() => handleDownloadFile("App.tsx", frontendCode)}
+                className="bg-slate-900 border border-slate-800 hover:bg-slate-800 text-slate-300 text-xs font-bold px-3 py-2 rounded-xl transition shadow-md"
+              >
+                📥 تحميل كود الواجهة (.tsx)
               </button>
             </div>
           )}
@@ -212,20 +224,28 @@ export default function Home() {
             </div>
           )}
           
-          {activeTab === "code" && (
+          {activeTab === "motoko" && (
             <div className="w-full h-full max-w-4xl">
               <pre className="w-full h-full text-blue-400 text-xs font-mono bg-slate-900 p-6 rounded-2xl border border-slate-800 overflow-x-auto text-left leading-relaxed shadow-2xl" dir="ltr">
-                {draftCode || "// كود لغة Motoko سيظهر هنا بمجرد التوليد..."}
+                {backendCode || "// كود لغة Motoko سيظهر هنا بمجرد التوليد البرمجي..."}
+              </pre>
+            </div>
+          )}
+
+          {activeTab === "react" && (
+            <div className="w-full h-full max-w-4xl">
+              <pre className="w-full h-full text-purple-400 text-xs font-mono bg-slate-900 p-6 rounded-2xl border border-slate-800 overflow-x-auto text-left leading-relaxed shadow-2xl" dir="ltr">
+                {frontendCode || "// كود واجهة مستخدم React سيظهر هنا بمجرد التوليد البرمجي..."}
               </pre>
             </div>
           )}
 
           {activeTab === "preview" && (
             <div className="w-full h-full flex flex-col items-center justify-center">
-              {!draftCode ? (
+              {!backendCode ? (
                 <div className="text-slate-600 text-xs text-center border-2 border-dashed border-slate-900 p-12 rounded-3xl max-w-sm">
                   <p className="text-sm font-bold text-slate-400 mb-1">🖥️ شاشة المحاكاة والتشغيل الحية</p>
-                  <p className="leading-relaxed text-slate-500">قم بكتابة أمر البناء في اليسار لتجهيز وتشغيل واجهة التطبيق التفاعلية الكاملة فوراً.</p>
+                  <p className="leading-relaxed text-slate-500">قم بكتابة أمر البناء في اليسار ليتولى المحرك فصل واستعراض الأكواد وتشغيل واجهة التطبيق التفاعلية الكاملة فوراً.</p>
                 </div>
               ) : (
                 /* آلة حاسبة بتصميم نيومورفيزم ثلاثي الأبعاد فخم ومبهر زجاجي */

@@ -3,45 +3,95 @@ import { NextResponse } from "next/server";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
+// 1. تعريف واجهة نظام الأحداث ومواصفات الـ JSON الهيكلية (Engine Types)
+interface ProjectSpecification {
+  projectName: string;
+  architecture: {
+    frontend: { framework: string; components: string[] };
+    backend: { language: string; canisters: string[]; methods: { name: string; type: "query" | "update"; params: string[] }[] };
+  };
+  databaseSchema: string[];
+}
+
 export async function POST(req: Request) {
   try {
-    const { prompt } = await req.json();
+    const { prompt, currentIteration = 0, previousSpecs = null } = await req.json();
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
-    // صياغة المواصفات الفنية المباشرة
-    const specsPrompt = `
-      حلل طلب المستخدم التالي واستخرج منه المواصفات الفنية لبناء تطبيق ذكي على شبكة ICP.
+    // -------------------------------------------------------------
+    // [الوكيل الأول: وكيل تحليل الأعمال وهندسة المواصفات - Business Analyst Agent]
+    // -------------------------------------------------------------
+    const analystPrompt = `
+      أنت وكيل ذكاء اصطناعي متخصص في تحليل الأنظمة (Business Analyst Agent).
+      مهمتك هي أخذ طلب المستخدم وإنتاج مواصفات تقنية صارمة بصيغة JSON فقط.
       طلب المستخدم: "${prompt}"
-      أخرج النتيجة في نقاط واضحة باللغة العربية تشمل: الهدف من التطبيق، أنواع البيانات، والدوال المطلوبة للتشغيل.
+      الحالة الحالية للمشروع (التطوير التكراري): ${previousSpecs ? JSON.stringify(previousSpecs) : "مشروع جديد"}
+      
+      يجب أن يتطابق المخرج تماماً مع هيكل الـ JSON التالي بدون أي نصوص إضافية أو علامات \`\`\`:
+      {
+        "projectName": "اسم المشروع بالإنجليزي",
+        "architecture": {
+          "frontend": { "framework": "Next.js/Tailwind", "components": ["قائمة المكونات المطلوبة للواجهة"] },
+          "backend": { "language": "Motoko", "canisters": ["اسم الحاوية الذكية"], "methods": [{"name": "اسم الدالة", "type": "query أو update", "params": ["المتغيرات"]}] }
+        },
+        "databaseSchema": ["حقول تخزين البيانات المستقرة في لغة Motoko"]
+      }
     `;
-    const specsResult = await model.generateContent(specsPrompt);
-    const generatedSpecs = specsResult.response.text();
 
-    // صياغة كود الـ Motoko مع توفير قالب احتياطي صارم في حالة ارتجال النموذج
-    const codePrompt = `
-      اكتب كود حاوية ذكية (actor) متكامل ونظيف بلغة Motoko لشبكة ICP يقوم بتنفيذ طلب المستخدم: "${prompt}".
-      يجب أن يحتوي الكود على الدوال الأساسية المخولة بإجراء العمليات (مثل الجمع والطرح الحسابي إذا كان الطلب آلة حاسبة).
-      شروط صارمة: أخرج الكود البرمجي الخام فقط، ممنوع كتابة مقدمات وممنوع استخدام علامات الأكواد \`\`\`.
-    `;
+    const analystResult = await model.generateContent(analystPrompt);
+    const specsRaw = analystResult.response.text().trim().replace(/```json/g, "").replace(/```/g, "");
     
-    const codeResult = await model.generateContent(codePrompt);
-    let generatedCode = codeResult.response.text().trim();
-
-    // إزالة أي علامات برمجية زائدة قد يضيفها الذكاء الاصطناعي وتسبب كسر الواجهة
-    generatedCode = generatedCode.replace(/```motoko/g, "").replace(/```/g, "");
-
-    // إذا فشل النموذج في توليد هيكل الحاوية، نتدخل برمجياً لإنقاذ التشغيل وضمان النتيجة للآلة الحاسبة
-    if (!generatedCode.includes("actor")) {
-      generatedCode = `// ICP Motoko Smart Contract Calculator\nactor Calculator {\n  stable var result : Int = 0;\n\n  public func add(x : Int, y : Int) : async Int {\n    result := x + y;\n    return result;\n  };\n\n  public func subtract(x : Int, y : Int) : async Int {\n    result := x - y;\n    return result;\n  };\n\n  public func multiply(x : Int, y : Int) : async Int {\n    result := x * y;\n    return result;\n  };\n\n  public func divide(x : Int, y : Int) : async Int {\n    if (y == 0) { return 0 };\n    result := x / y;\n    return result;\n  };\n\n  public query func getResult() : async Int {\n    return result;\n  };\n}`;
+    let verifiedSpecs: ProjectSpecification;
+    try {
+      verifiedSpecs = JSON.parse(specsRaw);
+    } catch (e) {
+      // نظام الحماية التلقائي في حالة فشل صياغة الـ JSON
+      throw new Error("فشل الوكيل الأول في صياغة مواصفات JSON متوافقة.");
     }
 
-    return NextResponse.json({ 
-      specs: generatedSpecs, 
-      code: generatedCode 
+    // -------------------------------------------------------------
+    // [الوكيل الثاني: وكيل برمجة الواجهة الخلفية - Backend Motoko Agent]
+    // -------------------------------------------------------------
+    const backendPrompt = `
+      أنت وكيل برمجة الخلفية (Backend Developer Agent) لشبكة ICP.
+      بناءً على مواصفات الـ JSON التالية، اكتب كود لغة Motoko الكامل والآمن داخل حاوية (actor):
+      ${JSON.stringify(verifiedSpecs)}
+      
+      شروط صارمة: أخرج كود Motoko الخام فقط. ممنوع الشرح، وممنوع استخدام علامات الأكواد \`\`\`.
+    `;
+    const backendResult = await model.generateContent(backendPrompt);
+    const backendCode = backendResult.response.text().trim().replace(/```motoko/g, "").replace(/```/g, "");
+
+    // -------------------------------------------------------------
+    // [الوكيل الثالث: وكيل برمجة الواجهة الأمامية - Frontend Tailwind Agent]
+    // -------------------------------------------------------------
+    const frontendPrompt = `
+      أنت وكيل برمجة الواجهة الأمامية (Frontend Developer Agent).
+      بناءً على مواصفات الـ JSON التالية، اكتب كود واجهة مستخدم تفاعلية كاملة باستخدام React و TailwindCSS ليتوافق مع دوال الخلفية:
+      ${JSON.stringify(verifiedSpecs)}
+      
+      شروط صارمة: أخرج كود React (TSX) الخام فقط، متضمناً أزرار وحقول لتجربة الدوال المذكورة في الـ JSON. ممنوع الشرح وعلامات \`\`\`.
+    `;
+    const frontendResult = await model.generateContent(frontendPrompt);
+    const frontendCode = frontendResult.response.text().trim().replace(/```tsx/g, "").replace(/```/g, "");
+
+    // -------------------------------------------------------------
+    // [معالجة الأحداث وحفظ الحالة - Event Handler & State Management]
+    // -------------------------------------------------------------
+    // هنا يتم إرسال النتيجة الكاملة المنفصلة للواجهة ليتم حفظها في التبويبات والإصدارات
+    return NextResponse.json({
+      success: true,
+      iteration: currentIteration + 1,
+      specs: verifiedSpecs,
+      codes: {
+        backend: backendCode,
+        frontend: frontendCode
+      },
+      timestamp: new Date().toISOString()
     });
 
-  } catch (error) {
-    console.error("AI Error:", error);
-    return NextResponse.json({ error: "حدث خطأ في المعالجة" }, { status: 500 });
+  } catch (error: any) {
+    console.error("Engine Crash:", error);
+    return NextResponse.json({ success: false, error: error.message || "حدث خطأ في محرك المعالجة الرئيسي" }, { status: 500 });
   }
 }

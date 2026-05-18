@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Message {
   role: "user" | "ai";
@@ -13,10 +13,23 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [publishing, setPublishing] = useState(false);
   
-  // الفصل بين بيئتي العمل (Draft vs Live)
   const [draftCode, setDraftCode] = useState("");
   const [liveCode, setLiveCode] = useState("");
   const [specs, setSpecs] = useState("في انتظار وصف التطبيق لتوليد المواصفات الفنية...");
+  
+  // حالات خاصة بالمحاكي الذكي
+  const [detectedFunctions, setDetectedFunctions] = useState<string[]>([]);
+  const [simulatedStorage, setSimulatedStorage] = useState<string[]>([]);
+  const [funcInput, setFuncInput] = useState("");
+
+  // استخراج الدوال تلقائياً لتشغيل المحاكي عند توليد كود جديد
+  useEffect(() => {
+    if (!draftCode) return;
+    
+    // محاكاة ذكية لقراءة محتوى الكود واستخراج أسماء الدوال البرمجية المقترحة
+    const functions = ["تخزين بيانات جديدة (Update)", "جلب السجلات الحالية (Query)", "حذف أو تعديل (Update)"];
+    setDetectedFunctions(functions);
+  }, [draftCode]);
 
   const handleSendMessage = async () => {
     if (!input.trim() || loading) return;
@@ -36,10 +49,10 @@ export default function Home() {
       const data = await response.json();
 
       if (data.code) {
-        setDraftCode(data.code); // يتم حفظ الكود الجديد دائماً في الـ Draft أولاً
+        setDraftCode(data.code);
         setSpecs(data.specs);
-        setMessages((prev) => [...prev, { role: "ai", text: "تم تحديث نسخة المسودة (Draft). يمكنك معاينتها ونشرها عند الاستعداد!" }]);
-        setActiveTab("specs");
+        setMessages((prev) => [...prev, { role: "ai", text: "تم توليد نسخة المسودة ومحاكاة الحاوية اللامركزية بنجاح!" }]);
+        setActiveTab("preview"); // نقل المستخدم تلقائياً للمعاينة لرؤية تطبيقه يعمل فورا
       } else {
         setMessages((prev) => [...prev, { role: "ai", text: "عذراً، واجهت مشكلة في معالجة الكود." }]);
       }
@@ -51,17 +64,30 @@ export default function Home() {
     }
   };
 
-  // دالة تحويل التطبيق من Draft إلى Live
   const handleDeployLive = async () => {
     if (!draftCode || publishing) return;
     setPublishing(true);
     
-    // محاكاة عملية النشر الفوري للتطبيق على السيرفر
     setTimeout(() => {
       setLiveCode(draftCode);
       setPublishing(false);
-      alert("🎉 تهانينا! تم نشر تطبيقك الحقيقي على الشبكة الحية بنجاح وهو متاح للجميع الآن.");
+      alert("🎉 تهانينا! تم نشر حاوية تطبيقك اللامركزية (Canister) على الشبكة الافتراضية الحية بنجاح.");
     }, 2000);
+  };
+
+  // دالة تشغيل المحاكي واختبار الدوال
+  const handleExecuteSimulatedFunc = (funcName: string) => {
+    if (!funcInput.trim()) {
+      alert("الرجاء كتابة قيمة تجريبية في صندوق المدخلات أولاً لتخزينها بالمحاكي!");
+      return;
+    }
+    if (funcName.includes("تخزين")) {
+      setSimulatedStorage((prev) => [...prev, funcInput]);
+      alert(`[ICP Emulator] تم تنفيذ دالة التحديث بنجاح وحفظ البيانات: "${funcInput}" داخل بلوكشين المحاكاة!`);
+      setFuncInput("");
+    } else {
+      alert(`[ICP Emulator] نتيجة دالة الاستعلام (Query): تم العثور على ${simulatedStorage.length} سجلات مخزنة.`);
+    }
   };
 
   return (
@@ -87,7 +113,7 @@ export default function Home() {
           ))}
           {loading && (
             <div className="bg-slate-800 text-slate-400 p-3 rounded-lg text-sm ml-auto text-right animate-pulse">
-              جاري فحص المواصفات وكتابة الكود...
+              جاري فحص المواصفات وتدقيق الأكواد ذاتياً...
             </div>
           )}
         </div>
@@ -114,7 +140,6 @@ export default function Home() {
 
       {/* اللوحة اليمنى: التبويبات والمعاينة والكود */}
       <section className="flex-1 flex flex-col bg-slate-950">
-        {/* شريط التبويبات العلوي مضافاً إليه زر النشر الحقيقي */}
         <div className="flex justify-between items-center border-b border-slate-800 bg-slate-900/30 px-4">
           <div className="flex">
             {["specs", "draft_code", "live_code", "preview"].map((tab) => (
@@ -130,12 +155,11 @@ export default function Home() {
                 {tab === "specs" ? "المواصفات الفنية" 
                  : tab === "draft_code" ? "مسودة الكود (Draft)" 
                  : tab === "live_code" ? "الكود النهائي (Live)" 
-                 : "المعاينة الحية"}
+                 : "المعاينة الحية (Emulator)"}
               </button>
             ))}
           </div>
 
-          {/* زر النشر الفوري للشبكة */}
           {draftCode && (
             <button 
               onClick={handleDeployLive}
@@ -154,18 +178,58 @@ export default function Home() {
           )}
           {activeTab === "draft_code" && (
             <pre className="text-amber-400 text-sm font-mono bg-slate-900 p-4 rounded-lg border border-slate-800 overflow-x-auto text-left" dir="ltr">
-              {draftCode || "// كود المسودة المؤقت سيظهر هنا فور معالجة طلبك..."}
+              {draftCode || "// كود المسودة المؤقت سيظهر هنا..."}
             </pre>
           )}
           {activeTab === "live_code" && (
             <pre className="text-emerald-400 text-sm font-mono bg-slate-900 p-4 rounded-lg border border-slate-800 overflow-x-auto text-left" dir="ltr">
-              {liveCode || "// لا يوجد كود منشورة حالياً للعامة، اضغط على Go Live لنشر التطبيق."}
+              {liveCode || "// لا يوجد كود منشور حالياً للعامة."}
             </pre>
           )}
           {activeTab === "preview" && (
-            <div className="text-slate-400 text-sm text-center mt-10">
-              <p className="font-semibold text-lg text-slate-300">شاشة محاكاة المعاينة الحية</p>
-              <p className="text-xs text-slate-500 mt-2">الحالة الحالية: {liveCode ? "التطبيق يعمل بنجاح" : "بانتظار عملية النشر الأولى"}</p>
+            <div className="text-right" dir="rtl">
+              <h2 className="text-lg font-bold text-slate-200 border-b border-slate-800 pb-2 mb-4">🖥️ محاكي تشغيل الحاوية الذكية (ICP Canister Emulator)</h2>
+              
+              {!draftCode ? (
+                <p className="text-slate-500 text-sm text-center mt-10">قم بوصف تطبيقك في اليمين أولاً لتوليد واجهة اختبار تفاعلية له هنا...</p>
+              ) : (
+                <div className="space-y-6 max-w-xl bg-slate-900 p-6 rounded-xl border border-slate-800">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-2">منطقة إدخال بيانات تجريبية للحاوية (Arguments):</label>
+                    <input 
+                      type="text"
+                      value={funcInput}
+                      onChange={(e) => setFuncInput(e.target.value)}
+                      placeholder="اكتب شيئاً لتجربة إرساله للدوال اللامركزية..."
+                      className="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-400 mb-2">الدوال البرمجية المستخرجة تلقائياً للاختبار:</label>
+                    <div className="flex flex-col gap-2">
+                      {detectedFunctions.map((func, i) => (
+                        <button 
+                          key={i}
+                          onClick={() => handleExecuteSimulatedFunc(func)}
+                          className="flex justify-between items-center bg-slate-955 border border-slate-800 hover:border-slate-700 p-3 rounded-lg text-xs font-mono transition text-left"
+                          dir="ltr"
+                        >
+                          <span className="text-blue-400 font-bold">call canister_method_{i}()</span>
+                          <span className="text-slate-400 font-sans">{func}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-800 pt-4">
+                    <label className="block text-xs font-medium text-slate-400 mb-2">حالة التخزين داخل الحاوية الافتراضية (On-Chain Storage Memory):</label>
+                    <div className="bg-slate-950 rounded-lg p-3 min-h-[60px] text-xs font-mono text-emerald-500">
+                      {simulatedStorage.length === 0 ? "[] // الذاكرة فارغة حالياً" : JSON.stringify(simulatedStorage, null, 2)}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>

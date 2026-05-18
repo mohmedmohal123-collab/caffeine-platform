@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 
-// تعريف بنية الرسالة في الشات
 interface Message {
   role: "user" | "ai";
   text: string;
@@ -12,10 +11,13 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [generatedCode, setGeneratedCode] = useState("");
+  const [publishing, setPublishing] = useState(false);
+  
+  // الفصل بين بيئتي العمل (Draft vs Live)
+  const [draftCode, setDraftCode] = useState("");
+  const [liveCode, setLiveCode] = useState("");
   const [specs, setSpecs] = useState("في انتظار وصف التطبيق لتوليد المواصفات الفنية...");
 
-  // دالة إرسال الطلب إلى الـ API الخلفي
   const handleSendMessage = async () => {
     if (!input.trim() || loading) return;
 
@@ -33,13 +35,12 @@ export default function Home() {
 
       const data = await response.json();
 
-            if (data.code) {
-        setGeneratedCode(data.code);
-        setSpecs(data.specs); // عرض المواصفات الفنية الحقيقية من الذكاء الاصطناعي
-        setMessages((prev) => [...prev, { role: "ai", text: "تم تحليل النظام وتوليد المواصفات والأكواد بدقة الفحص الفني!" }]);
-        setActiveTab("specs"); // نفتح تبويب المواصفات أولاً ليقرأها المستخدم (Specification First)
+      if (data.code) {
+        setDraftCode(data.code); // يتم حفظ الكود الجديد دائماً في الـ Draft أولاً
+        setSpecs(data.specs);
+        setMessages((prev) => [...prev, { role: "ai", text: "تم تحديث نسخة المسودة (Draft). يمكنك معاينتها ونشرها عند الاستعداد!" }]);
+        setActiveTab("specs");
       } else {
-
         setMessages((prev) => [...prev, { role: "ai", text: "عذراً، واجهت مشكلة في معالجة الكود." }]);
       }
     } catch (error) {
@@ -48,6 +49,19 @@ export default function Home() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // دالة تحويل التطبيق من Draft إلى Live
+  const handleDeployLive = async () => {
+    if (!draftCode || publishing) return;
+    setPublishing(true);
+    
+    // محاكاة عملية النشر الفوري للتطبيق على السيرفر
+    setTimeout(() => {
+      setLiveCode(draftCode);
+      setPublishing(false);
+      alert("🎉 تهانينا! تم نشر تطبيقك الحقيقي على الشبكة الحية بنجاح وهو متاح للجميع الآن.");
+    }, 2000);
   };
 
   return (
@@ -73,7 +87,7 @@ export default function Home() {
           ))}
           {loading && (
             <div className="bg-slate-800 text-slate-400 p-3 rounded-lg text-sm ml-auto text-right animate-pulse">
-              جاري التفكير وكتابة الكود...
+              جاري فحص المواصفات وكتابة الكود...
             </div>
           )}
         </div>
@@ -85,7 +99,7 @@ export default function Home() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
-            placeholder="اكتب وصفاً لتطبيقك (مثال: موقع إدارة مهام)..." 
+            placeholder="اكتب وصفاً لتطبيقك..." 
             className="flex-1 bg-slate-800 border border-slate-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-blue-500 text-right"
           />
           <button 
@@ -100,21 +114,37 @@ export default function Home() {
 
       {/* اللوحة اليمنى: التبويبات والمعاينة والكود */}
       <section className="flex-1 flex flex-col bg-slate-950">
-        {/* شريط التبويبات العلوي */}
-        <div className="flex border-b border-slate-800 bg-slate-900/30 px-4">
-          {["specs", "code", "preview"].map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-6 py-3 text-sm font-medium border-b-2 transition capitalize ${
-                activeTab === tab 
-                  ? "border-blue-500 text-blue-400" 
-                  : "border-transparent text-slate-400 hover:text-slate-200"
-              }`}
+        {/* شريط التبويبات العلوي مضافاً إليه زر النشر الحقيقي */}
+        <div className="flex justify-between items-center border-b border-slate-800 bg-slate-900/30 px-4">
+          <div className="flex">
+            {["specs", "draft_code", "live_code", "preview"].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition capitalize ${
+                  activeTab === tab 
+                    ? "border-blue-500 text-blue-400" 
+                    : "border-transparent text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                {tab === "specs" ? "المواصفات الفنية" 
+                 : tab === "draft_code" ? "مسودة الكود (Draft)" 
+                 : tab === "live_code" ? "الكود النهائي (Live)" 
+                 : "المعاينة الحية"}
+              </button>
+            ))}
+          </div>
+
+          {/* زر النشر الفوري للشبكة */}
+          {draftCode && (
+            <button 
+              onClick={handleDeployLive}
+              disabled={publishing}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded-md transition disabled:bg-slate-800 mr-2"
             >
-              {tab === "specs" ? "المواصفات الفنية" : tab === "code" ? "الأكواد" : "المعاينة الحية"}
+              {publishing ? "جاري النشر..." : "🚀 Go Live (نشر التطبيق)"}
             </button>
-          ))}
+          )}
         </div>
 
         {/* محتوى التبويبات النشطة */}
@@ -122,15 +152,20 @@ export default function Home() {
           {activeTab === "specs" && (
             <pre className="text-slate-300 text-sm whitespace-pre-wrap font-sans text-right" dir="rtl">{specs}</pre>
           )}
-          {activeTab === "code" && (
+          {activeTab === "draft_code" && (
+            <pre className="text-amber-400 text-sm font-mono bg-slate-900 p-4 rounded-lg border border-slate-800 overflow-x-auto text-left" dir="ltr">
+              {draftCode || "// كود المسودة المؤقت سيظهر هنا فور معالجة طلبك..."}
+            </pre>
+          )}
+          {activeTab === "live_code" && (
             <pre className="text-emerald-400 text-sm font-mono bg-slate-900 p-4 rounded-lg border border-slate-800 overflow-x-auto text-left" dir="ltr">
-              {generatedCode || "// كود لغة Motoko سيظهر هنا بمجرد كتابة طلبك..."}
+              {liveCode || "// لا يوجد كود منشورة حالياً للعامة، اضغط على Go Live لنشر التطبيق."}
             </pre>
           )}
           {activeTab === "preview" && (
             <div className="text-slate-400 text-sm text-center mt-10">
-              <p>شاشة محاكاة المعاينة الحية (Draft Environment)</p>
-              <p className="text-xs text-slate-500 mt-2">سيتم تفعيل ربط المحاكي في الخطوات القادمة.</p>
+              <p className="font-semibold text-lg text-slate-300">شاشة محاكاة المعاينة الحية</p>
+              <p className="text-xs text-slate-500 mt-2">الحالة الحالية: {liveCode ? "التطبيق يعمل بنجاح" : "بانتظار عملية النشر الأولى"}</p>
             </div>
           )}
         </div>

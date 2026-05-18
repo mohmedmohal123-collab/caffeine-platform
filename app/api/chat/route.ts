@@ -5,55 +5,46 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 export async function POST(req: Request) {
   try {
-    const { prompt } = await req.json();
+    const { prompt, history = [] } = await req.json();
     
+    // استخدام نموذج gemini-1.5-pro إذا كنت تريد منطقاً برمجياً أعلى، أو سنبقى على flash مع تهيئة مكثفة
     const model = genAI.getGenerativeModel({ 
       model: "gemini-1.5-flash",
       generationConfig: { responseMimeType: "application/json" }
     });
 
     const runnerPrompt = `
-      أنت نظام خبير مبرمج لإدارة وكلاء المطورين (Multi-Agent System) لبناء تطبيقات ويب لشبكة ICP.
-      بناءً على طلب المستخدم: "${prompt}"
-      
-      يجب أن تولد كائن JSON يحتوي بالضبط على هذه الحقول الثلاثة:
-      1. "specs": وثيقة معمارية هندسية تفصيلية وشاملة باللغة العربية تشرح هيكل الحاوية والدوال ونوع البيانات.
-      2. "backendCode": كود المصدر الكامل والنظيف بلغة Motoko وبدون استخدام علامات الأكواد التنسيقية إطلاقاً.
-      3. "frontendCode": كود واجهة مستخدم تفاعلية وجذابة بلغة React (TSX) باستخدام TailwindCSS متطابقة مع دوال الحاوية.
+      أنت مبرمج محرك منصة Caffeine.ai المتقدمة. وظيفتك هي استقبال طلب المستخدم لبناء تطبيق ويب لامركزي (On-Chain).
+      يجب أن تقوم بالخطوات التالية بدقة:
+      1. تحليل الفكرة وشرح الخطوات والمكتبات الفنية المستخدمة باللغة العربية بأسلوب هندسي مبهر.
+      2. ترجمة الوصف إلى معمارية هندسية (Specs).
+      3. بناء كود الواجهة الخلفية (Backend) بلغة Motoko بشكل احترافي جداً ومتقدم (يشمل الذاكرة المستقرة stable variables والدوال كاملة).
+      4. بناء كود الواجهة الأمامية (Frontend) بلغة React (TSX) باستخدام TailwindCSS ويكون متطوراً جداً وبصرياً مبهراً ثلاثي الأبعاد ويقوم بربط حقوله مع دوال الـ Backend بشكل ديناميكي كامل.
 
-      صيغة الـ JSON المطلوبة:
+      طلب المستخدم الحالي: "${prompt}"
+      سجل المحادثة للتطوير التكراري المستمر: ${JSON.stringify(history)}
+
+      يجب أن يكون المخرج كائن JSON حصري بالهيكل التالي:
       {
-        "specs": "نص المواصفات الفنية بالكامل هنا",
-        "backendCode": "كود لغة Motoko بالكامل هنا",
-        "frontendCode": "كود واجهة مستخدم React بالكامل هنا"
+        "explanation": "اكتب هنا الشرح التفصيلي للخطوات والمكتبات الفنية باللغة العربية وما الذي ستقوم ببنائه الآن بالتفصيل المبرمج",
+        "specs": "وثيقة المعمارية الهندسية ونوع البيانات المستقرة هنا",
+        "backendCode": "كود لغة Motoko الاحترافي والكامل هنا بدون أي علامات أكتاد تنسيقية إطلاقاً",
+        "frontendCode": "كود واجهة مستخدم React (TSX) مع TailwindCSS كامل ومبهر جداً بصرياً ليعمل داخل مفسر الواجهة الحية فوراً"
       }
     `;
 
     const result = await model.generateContent(runnerPrompt);
     let responseText = result.response.text().trim();
     
-    // --- آلية الإنقاذ الهندسي والتنظيف الصارم للنصوص ---
-    // إزالة علامات الاقتباس البرمجية الزائدة إذا أضافها الذكاء الاصطناعي بالخطأ وتسببت في كسر الـ Parsing
     if (responseText.startsWith("```")) {
       responseText = responseText.replace(/^```json/, "").replace(/```$/, "").trim();
     }
 
-    let parsedData;
-    try {
-      parsedData = JSON.parse(responseText);
-    } catch (parseError) {
-      console.warn("فشل التحليل الأولي، جاري محاولة التنظيف المتقدم...");
-      // تنظيف إضافي لعلامات السطور والرموز الهاربة
-      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        parsedData = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("فشل استخراج هيكل البيانات المخزن.");
-      }
-    }
+    const parsedData = JSON.parse(responseText);
 
     return NextResponse.json({
       success: true,
+      explanation: parsedData.explanation,
       specs: parsedData.specs,
       codes: {
         backend: parsedData.backendCode,
@@ -62,15 +53,7 @@ export async function POST(req: Request) {
     });
 
   } catch (error: any) {
-    console.error("Engine Error:", error);
-    // إرجاع رد احتياطي ذكي لمنع تجمد الشاشة وضمان توليد آلة حاسبة على الأقل في حالة تعطل الـ API
-    return NextResponse.json({
-      success: true,
-      specs: "📋 معمارية نظام تكراري للآلة الحاسبة الذكية على الـ ICP.",
-      codes: {
-        backend: "actor Calculator {\n  stable var currentResult : Int = 0;\n  public func add(x : Int, y : Int) : async Int { currentResult := x + y; return currentResult; };\n}",
-        frontend: "// React Dynamic Interface Built Successfully"
-      }
-    });
+    console.error("Engine Crash:", error);
+    return NextResponse.json({ success: false, error: "حدث خطأ في معالجة وكلاء النظام" }, { status: 500 });
   }
 }

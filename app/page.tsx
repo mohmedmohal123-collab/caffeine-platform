@@ -33,13 +33,13 @@ export default function Home() {
 
       const data = await response.json();
 
-      if (data.code) {
+            if (data.code) {
         setGeneratedCode(data.code);
-        // محاكاة سريعة لفصل المواصفات الفنية مبدئياً
-        setSpecs(`تم إنشاء بنية برمجية بناءً على طلبك:\n- الحاوية الذكية: Actor متكامل\n- اللغة المستخدمة: Motoko (ICP)\n- الهدف: ${userMessage}`);
-        setMessages((prev) => [...prev, { role: "ai", text: "تم توليد الكود والمواصفات بنجاح! تفقد اللوحة اليمنى." }]);
-        setActiveTab("code"); // نقل المستخدم تلقائياً لتبويب الكود لرؤية النتيجة
+        setSpecs(data.specs); // عرض المواصفات الفنية الحقيقية من الذكاء الاصطناعي
+        setMessages((prev) => [...prev, { role: "ai", text: "تم تحليل النظام وتوليد المواصفات والأكواد بدقة الفحص الفني!" }]);
+        setActiveTab("specs"); // نفتح تبويب المواصفات أولاً ليقرأها المستخدم (Specification First)
       } else {
+
         setMessages((prev) => [...prev, { role: "ai", text: "عذراً، واجهت مشكلة في معالجة الكود." }]);
       }
     } catch (error) {

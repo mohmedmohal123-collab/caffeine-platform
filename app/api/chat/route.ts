@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
   try {
-    const { prompt, step, currentSpecs } = await req.json();
+    const { prompt, history = [] } = await req.json();
     
-    // إرسال الطلب فوراً لـ OpenRouter من خادم وسيط سريع جداً
     const response = await fetch("https://openrouter.ai", {
       method: "POST",
       headers: {
@@ -12,30 +11,34 @@ export async function POST(req: Request) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "deepseek/deepseek-chat", // أو anthropic/claude-3.5-sonnet
+        model: "deepseek/deepseek-chat", 
         messages: [
           {
             role: "system",
-            content: "أنت النواة البرمجية لمنصة Caffeine.ai. تولد كود خام فقط بدون أي شرح أو علامات تنسيقية مثل ```."
+            content: `أنت محرك المطور المتقدم لمنصة Caffeine.ai لشبكة ICP. وظيفتك استقبال طلب المستخدم وبناء تطبيق حقيقي كامل.
+            يجب أن يكون ردك مقسماً بدقة باستخدام هذه العلامات الفاصلة لكي يقرأها النظام تلقائياً:
+            ===EXPLANATION===
+            اكتب هنا شرحاً هندسياً مفصلاً ومبهراً باللغة العربية للخطوات والمكتبات التي ستستخدمها لبناء هذا التطبيق، مع تقديم 3 اقتراحات وميزات ذكية لتطوير التطبيق التكراري.
+            ===SPECS===
+            اكتب هنا وثيقة المعمارية الفنية باللغة العربية (الهدف، الدوال، المتغيرات المستقرة).
+            ===BACKEND===
+            اكتب كود المصدر الكامل والمتطور جداً بلغة Motoko لشبكة ICP داخل حاوية (actor) ينفذ طلب المستخدم بالكامل وبدون أي علامات تنسيقية.
+            ===FRONTEND===
+            اكتب كود واجهة مستخدم React (TSX) كامل ومبهر بصرياً باستخدام TailwindCSS ليعمل كتطبيق تفاعلي للمعاينة الحية.`
           },
-          {
-            role: "user",
-            content: step === "specs" 
-              ? `حلل طلب المستخدم التالي: "${prompt}". وأخرج كائن JSON نظيفاً ومطابقاً للشروط التالية فقط: { "projectName": "اسم المشروع", "description": "شرح وتحليل تفصيلي ومبهر باللغة العربية للخطوات والمكتبات وتجهيز المترجم", "methods": ["الدوال المطلوبة"] }`
-              : step === "backend"
-              ? `بناءً على وثيقة المعمارية الفنية المرفقة: ${JSON.stringify(currentSpecs)}. اكتب كود مصدر كامل، متطور ومتقدم جداً بلغة Motoko داخل حاوية (actor). أخرج كود Motoko الخام فقط.`
-              : `بناءً على وثيقة المعمارية الفنية المرفقة: ${JSON.stringify(currentSpecs)}. اكتب كود واجهة مستخدم تفاعلية، ساحرة وبصرية ثلاثية الأبعاد بلغة React (TSX) باستخدام TailwindCSS. أخرج كود React الخام فقط.`
-          }
+          ...history,
+          { role: "user", content: prompt }
         ]
       })
     });
 
     const aiData = await response.json();
-    const resultText = aiData.choices[0].message.content.trim();
+    const resultText = aiData.choices[0].message.content;
 
-    return NextResponse.json({ success: true, output: resultText });
+    return NextResponse.json({ success: true, rawText: resultText });
 
   } catch (error: any) {
-    return NextResponse.json({ success: false, error: "Timeout out" });
+    console.error("Engine Crash:", error);
+    return NextResponse.json({ success: false, error: "فشل نظام الـ Pipeline" }, { status: 500 });
   }
 }

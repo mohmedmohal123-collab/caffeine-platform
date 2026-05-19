@@ -25,7 +25,7 @@ export default function Home() {
   const [simulatedDB, setSimulatedDB] = useState<any[]>([]);
   const [customInputVal, setCustomInputVal] = useState("");
 
-  const handleSendMessage = async () => {
+    const handleSendMessage = async () => {
     if (!input.trim() || loading) return;
 
     const userMessage = input;
@@ -46,22 +46,14 @@ export default function Home() {
 
       const data = await response.json();
 
-      if (data.success && data.rawText) {
-        const raw = data.rawText;
-        
-        // آلية الهندسة العكسية وفصل الحزم البرمجية باستخدام الفواصل البرمجية بدقة
-        const expSection = raw.split("===EXPLANATION===")[1]?.split("===SPECS===")[0]?.trim() || "";
-        const specsSection = raw.split("===SPECS===")[1]?.split("===BACKEND===")[0]?.trim() || "";
-        const backendSection = raw.split("===BACKEND===")[1]?.split("===FRONTEND===")[0]?.trim() || "";
-        const frontendSection = raw.split("===FRONTEND===")[1]?.trim() || "";
-
-        // حقن الأكواد حية داخل خانات المطور لاستعراضها
-        setBackendCode(backendSection.replace(/```motoko/g, "").replace(/```/g, ""));
-        setFrontendCode(frontendSection.replace(/```tsx/g, "").replace(/```/g, ""));
-        setSpecs(specsSection);
+      if (data.success) {
+        // استقبال الأكواد والشروحات النظيفة مباشرة من السيرفر
+        setBackendCode(data.backendCode);
+        setFrontendCode(data.frontendCode);
+        setSpecs(data.specs);
         setAppName(userMessage.substring(0, 24));
 
-        // تحديث المعاينة الحية ديناميكياً وتجهيز حقول اختبار مطابقة تماماً لنوع طلبك
+        // تحديث حقول المعاينة ديناميكياً بناءً على طلبك
         if (userMessage.includes("مشاهدات") || userMessage.includes("فيديو") || userMessage.includes("يوتيوب")) {
           setDynamicFields(["رابط الفيديو أو المشاهدة", "عنوان المقطع", "القسم / التصنيف"]);
         } else if (userMessage.includes("حاسبة") || userMessage.includes("رياضيات")) {
@@ -69,24 +61,27 @@ export default function Home() {
         } else {
           setDynamicFields(["اسم السجل الجديد", "البيانات الوصفية", "حقل التخزين المستقر"]);
         }
-        setSimulatedDB([]); // تصفير الذاكرة السابقة لبدء أبلكيشن جديد
+        setSimulatedDB([]);
 
         setMessages((prev) => [
           ...prev, 
           { 
             role: "ai", 
             text: "⚡ تم إنتاج النظام وتحديث شاشات المطور والمعاينة التنفيذية بنجاح!",
-            explanation: expSection 
+            explanation: data.explanation 
           }
         ]);
         setActiveTab("preview");
+      } else {
+        setMessages((prev) => [...prev, { role: "ai", text: "❌ واجه الخادم مشكلة في توليد حزم الأكواد." }]);
       }
     } catch (error) {
-      setMessages((prev) => [...prev, { role: "ai", text: "❌ واجه المحرك صعوبة في الاتصال بالوكلاء." }]);
+      setMessages((prev) => [...prev, { role: "ai", text: "❌ خطأ في الاستجابة السحابية الحية." }]);
     } finally {
       setLoading(false);
     }
   };
+
 
   const handleExecuteCanisterMethod = () => {
     if (!customInputVal.trim()) return;

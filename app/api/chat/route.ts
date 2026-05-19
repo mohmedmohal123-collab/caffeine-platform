@@ -12,19 +12,16 @@ export async function POST(req: Request) {
       },
       body: JSON.stringify({
         model: "deepseek/deepseek-chat", 
+        response_format: { type: "json_object" }, // إجبار النموذج على إخراج كائن JSON حصراً
         messages: [
           {
             role: "system",
-            content: `أنت محرك المطور المتقدم لمنصة Caffeine.ai لشبكة ICP. وظيفتك استقبال طلب المستخدم وبناء تطبيق حقيقي كامل.
-            يجب أن يكون ردك مقسماً بدقة باستخدام هذه العلامات الفاصلة لكي يقرأها النظام تلقائياً:
-            ===EXPLANATION===
-            اكتب هنا شرحاً هندسياً مفصلاً ومبهراً باللغة العربية للخطوات والمكتبات التي ستستخدمها لبناء هذا التطبيق، مع تقديم 3 اقتراحات وميزات ذكية لتطوير التطبيق التكراري.
-            ===SPECS===
-            اكتب هنا وثيقة المعمارية الفنية باللغة العربية (الهدف، الدوال، المتغيرات المستقرة).
-            ===BACKEND===
-            اكتب كود المصدر الكامل والمتطور جداً بلغة Motoko لشبكة ICP داخل حاوية (actor) ينفذ طلب المستخدم بالكامل وبدون أي علامات تنسيقية.
-            ===FRONTEND===
-            اكتب كود واجهة مستخدم React (TSX) كامل ومبهر بصرياً باستخدام TailwindCSS ليعمل كتطبيق تفاعلي للمعاينة الحية.`
+            content: `أنت المحرك البرمجي المتقدم لمنصة Caffeine.ai لشبكة ICP. 
+            يجب أن تكون إجابتك بصيغة كائن JSON يحتوي بدقة على المفاتيح التالية:
+            - "explanation": اكتب هنا شرحاً فذاً باللغة العربية للخطوات والمكتبات التي ستستخدمها لبناء هذا التطبيق بأسلوب تفاعلي ومقترح للميزات.
+            - "specs": وثيقة المعمارية الهندسية ونوع البيانات المستقرة باللغة العربية.
+            - "backendCode": كود المصدر الكامل والمتطور بلغة Motoko لشبكة ICP داخل حاوية (actor).
+            - "frontendCode": كود واجهة مستخدم React (TSX) فخم جداً ومكتمل باستخدام TailwindCSS.`
           },
           ...history,
           { role: "user", content: prompt }
@@ -33,12 +30,21 @@ export async function POST(req: Request) {
     });
 
     const aiData = await response.json();
-    const resultText = aiData.choices[0].message.content;
+    const resultText = aiData.choices[0].message.content.trim();
+    
+    // إرجاع البيانات المفككة تلقائياً للواجهة
+    const parsedData = JSON.parse(resultText);
 
-    return NextResponse.json({ success: true, rawText: resultText });
+    return NextResponse.json({ 
+      success: true, 
+      explanation: parsedData.explanation,
+      specs: parsedData.specs,
+      backendCode: parsedData.backendCode,
+      frontendCode: parsedData.frontendCode
+    });
 
   } catch (error: any) {
     console.error("Engine Crash:", error);
-    return NextResponse.json({ success: false, error: "فشل نظام الـ Pipeline" }, { status: 500 });
+    return NextResponse.json({ success: false, error: "فشل نظام الـ Pipeline السحابي" }, { status: 500 });
   }
 }
